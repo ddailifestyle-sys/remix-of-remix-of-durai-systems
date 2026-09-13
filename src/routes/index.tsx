@@ -43,7 +43,7 @@ function Index() {
       {ready && booting ? <BootSequence onComplete={completeBoot} /> : null}
       <SystemNavigation />
       <HeroSection reducedMotion={reducedMotion} />
-      <CommandCenter />
+      <CommandCenter reducedMotion={reducedMotion} />
       <footer className="border-t border-border bg-background px-5 py-7 font-mono text-[0.62rem] tracking-[0.15em] text-muted-foreground sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-[1500px] flex-col justify-between gap-3 sm:flex-row"><span>DURAI SYSTEMS / PHASE 01</span><span>ENGINEERING CORE ONLINE</span></div>
       </footer>
