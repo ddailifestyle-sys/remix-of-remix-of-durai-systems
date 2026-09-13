@@ -42,7 +42,7 @@ export function RecruiterAccess() {
               </Link>
             </li>
             <li>
-              <a href={`mailto:${profileData.contact[0].value}`} className="flex min-h-11 items-center justify-between px-1 font-mono text-[0.66rem] tracking-[0.14em] transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <a href={`mailto:${profileData.contact[0]?.value ?? ""}`} className="flex min-h-11 items-center justify-between px-1 font-mono text-[0.66rem] tracking-[0.14em] transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 CONTACT <span aria-hidden="true">→</span>
               </a>
             </li>

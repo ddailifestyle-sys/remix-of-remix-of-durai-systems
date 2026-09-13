@@ -87,7 +87,7 @@ export function IdentityPanel() {
         </div>
         <div className="flex flex-col gap-3">
           <a
-            href={`mailto:${profileData.contact[0].value}`}
+            href={`mailto:${profileData.contact[0]?.value ?? ""}`}
             className="inline-flex min-h-12 items-center justify-center gap-3 border border-primary bg-primary px-5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground shadow-signal transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             CONTACT
