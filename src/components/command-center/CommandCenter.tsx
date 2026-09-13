@@ -76,9 +76,10 @@ export function CommandCenter({ reducedMotion }: { reducedMotion: boolean }) {
                 x2={node.x}
                 y2={node.y}
                 stroke="currentColor"
-                strokeWidth={activeId === node.id ? 0.35 : 0.15}
+                strokeWidth={activeId === node.id ? 0.5 : 0.25}
                 vectorEffect="non-scaling-stroke"
-                className={`transition-all duration-300 ${activeId === node.id ? "text-primary" : "text-border"}`}
+                strokeDasharray={activeId === node.id ? "none" : "0.8 0.8"}
+                className={`transition-all duration-300 ${activeId === node.id ? "text-primary" : "text-muted-foreground/40"}`}
               />
             ))}
           </svg>
