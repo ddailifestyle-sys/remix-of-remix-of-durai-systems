@@ -194,6 +194,20 @@
   &:hover, &:focus-visible { transform: translateY(-2px); }
 }
 
+@keyframes core-spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes core-spin-medium { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+@keyframes core-spin-reverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@keyframes core-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes core-scan { 0% { transform: rotate(0deg) translateY(-30%); opacity: 0; } 50% { opacity: 0.7; } 100% { transform: rotate(360deg) translateY(-30%); opacity: 0; } }
+@keyframes core-drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(0.5%, -0.5%); } }
+
+.core-spin-slow { animation: core-spin-slow 40s linear infinite; }
+.core-spin-medium { animation: core-spin-medium 25s linear infinite; }
+.core-spin-reverse { animation: core-spin-reverse 55s linear infinite; }
+.core-pulse { animation: core-pulse 4s ease-in-out infinite; }
+.core-scan { animation: core-scan 8s ease-in-out infinite; }
+.core-drift { animation: core-drift 12s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
