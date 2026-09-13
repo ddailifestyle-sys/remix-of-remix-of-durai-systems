@@ -5,11 +5,12 @@ import { EnvironmentFallback } from "./EnvironmentFallback";
 const EngineeringEnvironment = lazy(() => import("./EngineeringEnvironment"));
 
 class VisualBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.warn("3D environment unavailable; fallback active", error, info); }
-  render() { return this.state.failed ? <EnvironmentFallback /> : this.props.children; }
+  override componentDidCatch(error: Error, info: ErrorInfo) { console.warn("3D environment unavailable; fallback active", error, info); }
+  override render() { return this.state.failed ? <EnvironmentFallback /> : this.props.children; }
 }
+
 
 function supportsWebGL() {
   try {
