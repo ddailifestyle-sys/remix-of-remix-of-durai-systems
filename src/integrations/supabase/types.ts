@@ -14,7 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          subject?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      participant_state: {
+        Row: {
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          about: string
+          college: string
+          created_at: string
+          department: string
+          email: string
+          members: Json
+          motto: string
+          phone: string
+          registered_at: string
+          team_id: string
+          team_name: string
+          team_size: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          about?: string
+          college?: string
+          created_at?: string
+          department?: string
+          email?: string
+          members?: Json
+          motto?: string
+          phone?: string
+          registered_at?: string
+          team_id?: string
+          team_name?: string
+          team_size?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          about?: string
+          college?: string
+          created_at?: string
+          department?: string
+          email?: string
+          members?: Json
+          motto?: string
+          phone?: string
+          registered_at?: string
+          team_id?: string
+          team_name?: string
+          team_size?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
