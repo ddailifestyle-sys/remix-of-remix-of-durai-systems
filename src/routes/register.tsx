@@ -286,10 +286,11 @@ function RegisterPage() {
               </button>
             ) : (
               <button
-                onClick={submit}
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-gradient px-6 py-3 text-sm font-semibold text-primary-foreground"
+                onClick={() => void submit()}
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-gradient px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               >
-                Submit Registration <Check className="h-4 w-4" />
+                {busy ? "Creating account…" : "Submit Registration"} <Check className="h-4 w-4" />
               </button>
             )}
           </div>

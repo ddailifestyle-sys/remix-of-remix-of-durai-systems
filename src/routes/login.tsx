@@ -6,7 +6,9 @@ import authImg from "@/assets/auth-hero.jpg";
 import { AuthParticles } from "@/components/AuthParticles";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { makeTeamId, useStore } from "@/lib/store";
+import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
+import { refreshStore, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
