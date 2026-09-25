@@ -4,7 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { makeTeamId, useStore, type Team } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
+import { makeTeamId, refreshStore, useStore, type Team } from "@/lib/store";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -44,6 +45,7 @@ function RegisterPage() {
     confirm: "",
   });
   const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const next = (): void => {
     if (step === 0) {
@@ -64,11 +66,30 @@ function RegisterPage() {
     setStep((s) => Math.min(s + 1, 1));
   };
 
-  const submit = (): void => {
+  const submit = async (): Promise<void> => {
     if (!agree) {
       toast.error("Please accept the rules to continue.");
       return;
     }
+    if (busy) return;
+    setBusy(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: info.email.trim(),
+      password: info.password,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
+    if (!data.session) {
+      setBusy(false);
+      toast.success("Account created. Check your email to confirm, then sign in.");
+      navigate({ to: "/login" });
+      return;
+    }
+
     const team: Team = {
       teamName: info.name,
       teamId: makeTeamId(info.name),
@@ -77,14 +98,16 @@ function RegisterPage() {
       department: info.department,
       email: info.email,
       phone: info.phone,
-      password: info.password,
+      password: "",
       members: [{ name: info.name, role: "Participant", email: info.email }],
       about: "",
       motto: "",
       registeredAt: new Date().toISOString(),
     };
+    await refreshStore();
     update((s) => ({ ...s, team }));
     logActivity(`${team.teamName} registered for the challenge`);
+    setBusy(false);
     toast.success(`Account created! Your participant ID is ${team.teamId}`);
     navigate({ to: "/app" });
   };
