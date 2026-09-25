@@ -593,9 +593,7 @@ export const BASE_LEADERBOARD = [
 
 export const EVENT_END = "2026-12-31T23:59:59";
 
-/* --------------------------------- storage -------------------------------- */
-
-const KEY = "iot-simlab-state-v1";
+/* -------------------------------- database -------------------------------- */
 
 const EMPTY: AppState = {
   team: null,
@@ -606,45 +604,186 @@ const EMPTY: AppState = {
   contactMessages: [],
 };
 
-function read(): AppState {
-  if (typeof window === "undefined") return EMPTY;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return EMPTY;
-    return { ...EMPTY, ...(JSON.parse(raw) as AppState) };
-  } catch {
-    return EMPTY;
-  }
-}
-
-function write(state: AppState) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(state));
-  window.dispatchEvent(new Event("simlab-store"));
-}
-
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+type Progress = Pick<AppState, "attempts" | "simulations" | "submissions" | "activity">;
+
+let cache: AppState = EMPTY;
+let loading: Promise<AppState> | null = null;
+const listeners = new Set<(s: AppState) => void>();
+
+const emit = () => {
+  for (const l of listeners) l(cache);
+};
+
+function rowToTeam(row: Record<string, unknown>): Team {
+  return {
+    teamName: String(row["team_name"] ?? ""),
+    teamId: String(row["team_id"] ?? ""),
+    teamSize: String(row["team_size"] ?? "1"),
+    college: String(row["college"] ?? ""),
+    department: String(row["department"] ?? ""),
+    email: String(row["email"] ?? ""),
+    phone: String(row["phone"] ?? ""),
+    password: "",
+    members: (row["members"] as Team["members"]) ?? [],
+    about: String(row["about"] ?? ""),
+    motto: String(row["motto"] ?? ""),
+    registeredAt: String(row["registered_at"] ?? new Date().toISOString()),
+  };
+}
+
+function teamToRow(userId: string, team: Team) {
+  return {
+    user_id: userId,
+    team_name: team.teamName,
+    team_id: team.teamId,
+    team_size: team.teamSize,
+    college: team.college,
+    department: team.department,
+    email: team.email,
+    phone: team.phone,
+    members: team.members,
+    about: team.about,
+    motto: team.motto,
+    registered_at: team.registeredAt,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/** Loads the signed-in participant's profile and progress from the database. */
+async function loadFromDb(): Promise<AppState> {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) return EMPTY;
+
+  const [profileRes, stateRes] = await Promise.all([
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("participant_state").select("data").eq("user_id", user.id).maybeSingle(),
+  ]);
+
+  let profile = profileRes.data as Record<string, unknown> | null;
+
+  // First sign-in through a social provider: create a starter profile.
+  if (!profile) {
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const name = String(meta["full_name"] ?? meta["name"] ?? user.email?.split("@")[0] ?? "Participant");
+    const seed: Team = {
+      teamName: name,
+      teamId: makeTeamId(name),
+      teamSize: "1",
+      college: "",
+      department: "",
+      email: user.email ?? "",
+      phone: "",
+      password: "",
+      members: [{ name, role: "Participant", email: user.email ?? "" }],
+      about: "",
+      motto: "",
+      registeredAt: new Date().toISOString(),
+    };
+    const inserted = await supabase
+      .from("profiles")
+      .upsert(teamToRow(user.id, seed))
+      .select("*")
+      .maybeSingle();
+    profile = (inserted.data as Record<string, unknown> | null) ?? teamToRow(user.id, seed);
+  }
+
+  const progress = ((stateRes.data?.data ?? {}) as Partial<Progress>) || {};
+
+  return {
+    team: rowToTeam(profile),
+    attempts: progress.attempts ?? [],
+    simulations: progress.simulations ?? [],
+    submissions: progress.submissions ?? [],
+    activity: progress.activity ?? [],
+    contactMessages: [],
+  };
+}
+
+async function persist(state: AppState) {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) return;
+
+  const tasks: Promise<unknown>[] = [
+    supabase.from("participant_state").upsert({
+      user_id: user.id,
+      data: {
+        attempts: state.attempts,
+        simulations: state.simulations,
+        submissions: state.submissions,
+        activity: state.activity,
+      } as never,
+      updated_at: new Date().toISOString(),
+    }),
+  ];
+  if (state.team) tasks.push(supabase.from("profiles").upsert(teamToRow(user.id, state.team)));
+  await Promise.all(tasks);
+}
+
+/** Reloads everything from the database and notifies all mounted components. */
+export async function refreshStore() {
+  loading = loadFromDb();
+  cache = await loading;
+  emit();
+  return cache;
+}
+
+/** Saves a contact message to the database. */
+export async function sendContactMessage(msg: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  const { error } = await supabase.from("contact_messages").insert({
+    user_id: auth.user?.id ?? null,
+    name: msg.name,
+    email: msg.email,
+    subject: msg.subject,
+    message: msg.message,
+  });
+  if (error) throw error;
+}
+
 export function useStore() {
-  const [state, setState] = useState<AppState>(EMPTY);
+  const [state, setState] = useState<AppState>(cache);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setState(read());
-    setReady(true);
-    const sync = () => setState(read());
-    window.addEventListener("simlab-store", sync);
-    window.addEventListener("storage", sync);
+    let active = true;
+    const sync = (s: AppState) => {
+      if (active) setState(s);
+    };
+    listeners.add(sync);
+
+    void (loading ?? refreshStore()).then((s) => {
+      if (!active) return;
+      setState(s);
+      setReady(true);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        void refreshStore();
+      }
+    });
+
     return () => {
-      window.removeEventListener("simlab-store", sync);
-      window.removeEventListener("storage", sync);
+      active = false;
+      listeners.delete(sync);
+      sub.subscription.unsubscribe();
     };
   }, []);
 
   const update = useCallback((fn: (s: AppState) => AppState) => {
-    const next = fn(read());
-    write(next);
-    setState(next);
+    const next = fn(cache);
+    cache = next;
+    emit();
+    void persist(next);
   }, []);
 
   const logActivity = useCallback(
@@ -657,6 +796,14 @@ export function useStore() {
   );
 
   return { state, ready, update, logActivity };
+}
+
+/** Clears the in-memory copy after sign-out. */
+export async function signOutParticipant() {
+  await supabase.auth.signOut();
+  cache = EMPTY;
+  loading = Promise.resolve(EMPTY);
+  emit();
 }
 
 export function timeAgo(iso: string) {
