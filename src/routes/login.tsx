@@ -66,48 +66,43 @@ function useParallax<T extends HTMLElement>() {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { state, update, logActivity } = useStore();
+  const { logActivity } = useStore();
   const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const { ref: stageRef, p } = useParallax<HTMLDivElement>();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const team = state.team;
-    if (!team) {
-      toast.error("No account found on this device. Please register first.");
-      return;
-    }
-    if (team.email.toLowerCase() !== form.email.toLowerCase() || team.password !== form.password) {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: form.email.trim(),
+      password: form.password,
+    });
+    if (error) {
+      setBusy(false);
       toast.error("Invalid email or password.");
       return;
     }
-    logActivity(`${team.teamName} signed in`);
-    toast.success(`Welcome back, ${team.teamName}!`);
+    const state = await refreshStore();
+    setBusy(false);
+    const name = state.team?.teamName ?? "participant";
+    logActivity(`${name} signed in`);
+    toast.success(`Welcome back, ${name}!`);
     navigate({ to: "/app" });
   };
 
-  const guest = () => {
-    update((s) => ({
-      ...s,
-      team:
-        s.team ??
-        {
-          teamName: "Aarav Sharma",
-          teamId: makeTeamId("Aarav Sharma"),
-          teamSize: "1",
-          college: "Institute of Technology",
-          department: "Electronics & Communication",
-          email: "aarav@iotsimlab.com",
-          phone: "+91 98765 43210",
-          password: "demo1234",
-          members: [{ name: "Aarav Sharma", role: "Participant", email: "aarav@college.edu" }],
-          about: "Final-year student building connected systems.",
-          motto: "Simulate first, ship confidently.",
-          registeredAt: new Date().toISOString(),
-        },
-    }));
-    toast.success("Signed in with the demo account.");
+  const google = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error("Google sign-in failed. Please try again.");
+      return;
+    }
+    if (result.redirected) return;
+    await refreshStore();
     navigate({ to: "/app" });
   };
 
