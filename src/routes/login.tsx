@@ -33,7 +33,7 @@ const FIELD =
 const HIGHLIGHTS = [
   { icon: Cpu, title: "Virtual Hardware", text: "ESP32, sensors and displays ready to wire." },
   { icon: Zap, title: "Instant Simulation", text: "Run and debug without any installation." },
-  { icon: ShieldCheck, title: "Progress Saved", text: "Your circuits and scores persist locally." },
+  { icon: ShieldCheck, title: "Progress Saved", text: "Your circuits and scores sync to your account." },
 ];
 
 /** Mouse-driven parallax offsets, normalised to -1..1 on both axes. */
@@ -186,7 +186,7 @@ function LoginPage() {
             Enter your credentials to access the dashboard.
           </p>
 
-          <form onSubmit={submit} className="mt-8 space-y-4">
+          <form onSubmit={(e) => void submit(e)} className="mt-8 space-y-4">
             <div className="animate-auth-rise relative" style={{ animationDelay: "220ms" }}>
               <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -238,7 +238,7 @@ function LoginPage() {
           </div>
 
           <button
-            onClick={guest}
+            onClick={() => void google()}
             className="animate-auth-rise flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface/70 py-3.5 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent"
             style={{ animationDelay: "470ms" }}
           >
