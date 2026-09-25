@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { initials, useStore } from "@/lib/store";
+import { initials, signOutParticipant, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
@@ -92,8 +92,7 @@ function AppLayout() {
             <ThemeToggle />
             <button
               onClick={() => {
-                update((s) => ({ ...s, team: null }));
-                navigate({ to: "/" });
+                void signOutParticipant().then(() => navigate({ to: "/" }));
               }}
               className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
             >

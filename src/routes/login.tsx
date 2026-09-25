@@ -6,7 +6,9 @@ import authImg from "@/assets/auth-hero.jpg";
 import { AuthParticles } from "@/components/AuthParticles";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { makeTeamId, useStore } from "@/lib/store";
+import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
+import { refreshStore, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -31,7 +33,7 @@ const FIELD =
 const HIGHLIGHTS = [
   { icon: Cpu, title: "Virtual Hardware", text: "ESP32, sensors and displays ready to wire." },
   { icon: Zap, title: "Instant Simulation", text: "Run and debug without any installation." },
-  { icon: ShieldCheck, title: "Progress Saved", text: "Your circuits and scores persist locally." },
+  { icon: ShieldCheck, title: "Progress Saved", text: "Your circuits and scores sync to your account." },
 ];
 
 /** Mouse-driven parallax offsets, normalised to -1..1 on both axes. */
@@ -64,48 +66,43 @@ function useParallax<T extends HTMLElement>() {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { state, update, logActivity } = useStore();
+  const { logActivity } = useStore();
   const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const { ref: stageRef, p } = useParallax<HTMLDivElement>();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const team = state.team;
-    if (!team) {
-      toast.error("No account found on this device. Please register first.");
-      return;
-    }
-    if (team.email.toLowerCase() !== form.email.toLowerCase() || team.password !== form.password) {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: form.email.trim(),
+      password: form.password,
+    });
+    if (error) {
+      setBusy(false);
       toast.error("Invalid email or password.");
       return;
     }
-    logActivity(`${team.teamName} signed in`);
-    toast.success(`Welcome back, ${team.teamName}!`);
+    const state = await refreshStore();
+    setBusy(false);
+    const name = state.team?.teamName ?? "participant";
+    logActivity(`${name} signed in`);
+    toast.success(`Welcome back, ${name}!`);
     navigate({ to: "/app" });
   };
 
-  const guest = () => {
-    update((s) => ({
-      ...s,
-      team:
-        s.team ??
-        {
-          teamName: "Aarav Sharma",
-          teamId: makeTeamId("Aarav Sharma"),
-          teamSize: "1",
-          college: "Institute of Technology",
-          department: "Electronics & Communication",
-          email: "aarav@iotsimlab.com",
-          phone: "+91 98765 43210",
-          password: "demo1234",
-          members: [{ name: "Aarav Sharma", role: "Participant", email: "aarav@college.edu" }],
-          about: "Final-year student building connected systems.",
-          motto: "Simulate first, ship confidently.",
-          registeredAt: new Date().toISOString(),
-        },
-    }));
-    toast.success("Signed in with the demo account.");
+  const google = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error("Google sign-in failed. Please try again.");
+      return;
+    }
+    if (result.redirected) return;
+    await refreshStore();
     navigate({ to: "/app" });
   };
 
@@ -189,7 +186,7 @@ function LoginPage() {
             Enter your credentials to access the dashboard.
           </p>
 
-          <form onSubmit={submit} className="mt-8 space-y-4">
+          <form onSubmit={(e) => void submit(e)} className="mt-8 space-y-4">
             <div className="animate-auth-rise relative" style={{ animationDelay: "220ms" }}>
               <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -241,7 +238,7 @@ function LoginPage() {
           </div>
 
           <button
-            onClick={guest}
+            onClick={() => void google()}
             className="animate-auth-rise flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface/70 py-3.5 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent"
             style={{ animationDelay: "470ms" }}
           >
